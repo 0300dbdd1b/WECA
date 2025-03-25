@@ -5,3 +5,4 @@ WECA.exe
 CBuilder
 CBuilder.exe
 compile_commands.json
+src/extern/*
