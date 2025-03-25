@@ -1,0 +1,7 @@
+*.o
+src/*.o
+WECA
+WECA.exe
+CBuilder
+CBuilder.exe
+compile_commands.json
