@@ -18,16 +18,27 @@ exit
 	#define	_CBUILD_
 	#define	BUILDER_SOURCE		"CBuilder.c"
 	#define	BUILDER_BASE_NAME	"CBuilder"
-
+	#if (defined(__MINGW64__) || defined(__MINGW32__)) && (defined(_WIN32) || defined(_WIN64))	// WARN: who cares about mingw?
+		#define DEFAULT_COMPILER		"x86_64-w64-mingw32-gcc"
+	#elif defined(__GNUC__)
+		#define DEFAULT_COMPILER		"gcc"
+	#elif defined(__clang__)
+		#define DEFAULT_COMPILER		"clang"
+	#elif defined(_MSC_VER)
+		#define DEFAULT_COMPILER		"cl"
+	#elif defined(__TINYC__)
+		#define DEFAULT_COMPILER		"tcc"
+	#endif
 	#if defined(_WIN32) || defined(_WIN64)
 		#include <windows.h>
 		#include <direct.h>
+		#include <sys/stat.h>
 		#ifndef		PLATFORM_WINDOWS
 			#	define	PLATFORM_WINDOWS
     		#	define mkdir _mkdir
 		#endif
 		#define BUILDER_NAME			BUILDER_BASE_NAME ".exe"
-		#define BUILDER_CC				"msvc"
+		#define BUILDER_CC				DEFAULT_COMPILER
 		#define BUILDER_CFLAGS			""
 		#define BUILDER_LDFLAGS			""
 		#define BUILDER_DEBUG_CFLAGS	"-g3"
@@ -56,7 +67,7 @@ exit
 			#ifndef		PLATFORM_LINUX
 				#define	PLATFORM_LINUX
 			#endif
-			#define		BUILDER_CC				"cc"
+			#define		BUILDER_CC				DEFAULT_COMPILER
 			#define		BUILDER_CFLAGS			""
 			#define		BUILDER_LDFLAGS			""
 			#define		BUILDER_DEBUG_CFLAGS	"-g3"
@@ -65,7 +76,7 @@ exit
 			#ifndef		PLATFORM_MACOS
 				#define	PLATFORM_MACOS
 			#endif
-			#define		BUILDER_CC				"clang"
+			#define		BUILDER_CC				DEFAULT_COMPILER
 			#define		BUILDER_CFLAGS			""
 			#define		BUILDER_LDFLAGS			""
 			#define		BUILDER_DEBUG_CFLAGS	"-g3"
@@ -106,14 +117,14 @@ exit
 
 /* Platform-specific includes and definitions */
 #ifdef _WIN32
-    #include <windows.h>
-    #include <io.h>
-    #define _STRDUP _strdup
-    #define _LOCALTIME(t, tm) localtime_s(&(tm), &(t))
+#include <windows.h>
+#include <io.h>
+#define _STRDUP _strdup
+#define _LOCALTIME(t, tm) localtime_s(&(tm), &(t))
 #else
-    #include <unistd.h>
-    #define _STRDUP strdup
-    #define _LOCALTIME(t, tm) (tm = *localtime(&(t)))
+#include <unistd.h>
+#define _STRDUP strdup
+#define _LOCALTIME(t, tm) (tm = *localtime(&(t)))
 #endif
 
 /* Log levels */
@@ -125,16 +136,16 @@ exit
 
 /* Default log level */
 #ifndef LOG_LEVEL
-    #define LOG_LEVEL LOG_LEVEL_DEBUG
+#define LOG_LEVEL LOG_LEVEL_DEBUG
 #endif
 
 /* Log file path and mode defaults */
 #ifndef LOG_FILE_PATH
-    #define LOG_FILE_PATH "default_log.log"
+#define LOG_FILE_PATH "default_log.log"
 #endif
 
 #ifndef LOG_FILE_MODE
-    #define LOG_FILE_MODE "a"
+#define LOG_FILE_MODE "a"
 #endif
 
 #define MAX_LOG_MESSAGE_LENGTH 2048
@@ -142,9 +153,9 @@ exit
 
 /* Logging modes */
 typedef enum {
-    LOG_MODE_FILE,
-    LOG_MODE_STDERR,
-    LOG_MODE_STDOUT
+	LOG_MODE_FILE,
+	LOG_MODE_STDERR,
+	LOG_MODE_STDOUT
 } LogMode;
 
 /* Global settings */
@@ -160,66 +171,70 @@ static int _show_log_level = 1;  /* Toggle log level visibility */
 
 /* ANSI color macros */
 
-// Text colors
-#define COLOR_WHITE     "\033[37m"
-#define COLOR_GREEN     "\033[32m"
-#define COLOR_YELLOW    "\033[33m"
-#define COLOR_RED       "\033[31m"
-#define COLOR_MAGENTA   "\033[35m"
-#define COLOR_CYAN      "\033[36m"
-#define COLOR_BLUE      "\033[34m"
-
-
-#define COLOR_BLACK      "\033[30m"
-#define COLOR_DARK_GRAY  "\033[90m"
-#define COLOR_LIGHT_RED  "\033[91m"
-#define COLOR_LIGHT_GREEN "\033[92m"
-#define COLOR_LIGHT_YELLOW "\033[93m"
-#define COLOR_LIGHT_BLUE "\033[94m"
-#define COLOR_LIGHT_MAGENTA "\033[95m"
-#define COLOR_LIGHT_CYAN "\033[96m"
-#define COLOR_LIGHT_WHITE "\033[97m"
-
-// Background colors
-#define BG_BLACK   "\033[40m"
-#define BG_RED     "\033[41m"
-#define BG_GREEN   "\033[42m"
-#define BG_YELLOW  "\033[43m"
-#define BG_BLUE    "\033[44m"
-#define BG_MAGENTA "\033[45m"
-#define BG_CYAN    "\033[46m"
-#define BG_WHITE   "\033[47m"
-
-#define BG_DARK_GRAY  "\033[100m"
-#define BG_LIGHT_RED  "\033[101m"
-#define BG_LIGHT_GREEN "\033[102m"
-#define BG_LIGHT_YELLOW "\033[103m"
-#define BG_LIGHT_BLUE "\033[104m"
-#define BG_LIGHT_MAGENTA "\033[105m"
-#define BG_LIGHT_CYAN "\033[106m"
-#define BG_LIGHT_WHITE "\033[107m"
-
-// Text styles
-#define STYLE_BOLD       "\033[1m"
-#define STYLE_DIM        "\033[2m"
-#define STYLE_UNDERLINE  "\033[4m"
-#define STYLE_BLINK      "\033[5m"
-#define STYLE_REVERSE    "\033[7m"
-#define STYLE_HIDDEN     "\033[8m"
-
-// Reset all
-#define COLOR_RESET      "\033[0m"
 
 #ifdef _WIN32
-    static WORD _log_colors[] = {7, 10, 14, 12, 4};
+    #define ANSI_COLOR(code) ""
 #else
-    static const char* _log_colors[] = {
-        COLOR_WHITE,   /* DEBUG */
-        COLOR_GREEN,   /* INFO */
-        COLOR_YELLOW,  /* WARN */
-        COLOR_RED,     /* ERROR */
-        COLOR_MAGENTA  /* FATAL */
-    };
+    #define ANSI_COLOR(code) code
+#endif
+
+// Text colors
+#define COLOR_WHITE			ANSI_COLOR("\033[37m")
+#define COLOR_GREEN			ANSI_COLOR("\033[32m")
+#define COLOR_YELLOW		ANSI_COLOR("\033[33m")
+#define COLOR_RED			ANSI_COLOR("\033[31m")
+#define COLOR_MAGENTA		ANSI_COLOR("\033[35m")
+#define COLOR_CYAN			ANSI_COLOR("\033[36m")
+#define COLOR_BLUE			ANSI_COLOR("\033[34m")
+#define COLOR_BLACK			ANSI_COLOR("\033[30m")
+#define COLOR_DARK_GRAY		ANSI_COLOR("\033[90m")
+#define COLOR_LIGHT_RED		ANSI_COLOR("\033[91m")
+#define COLOR_LIGHT_GREEN	ANSI_COLOR("\033[92m")
+#define COLOR_LIGHT_YELLOW	ANSI_COLOR("\033[93m")
+#define COLOR_LIGHT_BLUE	ANSI_COLOR("\033[94m")
+#define COLOR_LIGHT_MAGENTA	ANSI_COLOR("\033[95m")
+#define COLOR_LIGHT_CYAN	ANSI_COLOR("\033[96m")
+#define COLOR_LIGHT_WHITE	ANSI_COLOR("\033[97m")
+
+// Background colors
+#define BG_BLACK			ANSI_COLOR("\033[40m")
+#define BG_RED				ANSI_COLOR("\033[41m")
+#define BG_GREEN			ANSI_COLOR("\033[42m")
+#define BG_YELLOW			ANSI_COLOR("\033[43m")
+#define BG_BLUE				ANSI_COLOR("\033[44m")
+#define BG_MAGENTA			ANSI_COLOR("\033[45m")
+#define BG_CYAN				ANSI_COLOR("\033[46m")
+#define BG_WHITE			ANSI_COLOR("\033[47m")
+#define BG_DARK_GRAY		ANSI_COLOR("\033[100m")
+#define BG_LIGHT_RED		ANSI_COLOR("\033[101m")
+#define BG_LIGHT_GREEN		ANSI_COLOR("\033[102m")
+#define BG_LIGHT_YELLOW		ANSI_COLOR("\033[103m")
+#define BG_LIGHT_BLUE		ANSI_COLOR("\033[104m")
+#define BG_LIGHT_MAGENTA	ANSI_COLOR("\033[105m")
+#define BG_LIGHT_CYAN		ANSI_COLOR("\033[106m")
+#define BG_LIGHT_WHITE		ANSI_COLOR("\033[107m")
+
+// Text styles
+#define STYLE_BOLD			ANSI_COLOR("\033[1m")
+#define STYLE_DIM			ANSI_COLOR("\033[2m")
+#define STYLE_UNDERLINE		ANSI_COLOR("\033[4m")
+#define STYLE_BLINK			ANSI_COLOR("\033[5m")
+#define STYLE_REVERSE		ANSI_COLOR("\033[7m")
+#define STYLE_HIDDEN		ANSI_COLOR("\033[8m")
+
+// Reset
+#define COLOR_RESET			ANSI_COLOR("\033[0m")
+
+#ifdef _WIN32
+static WORD _log_colors[] = {7, 10, 14, 12, 4};
+#else
+static const char* _log_colors[] = {
+	COLOR_WHITE,   /* DEBUG */
+	COLOR_GREEN,   /* INFO */
+	COLOR_YELLOW,  /* WARN */
+	COLOR_RED,     /* ERROR */
+	COLOR_MAGENTA  /* FATAL */
+};
 #endif
 
 /* Function to toggle log level visibility */
@@ -229,119 +244,131 @@ static inline void SetShowFileLine(int enable) { _show_file_line = enable; }
 static inline void SetShowTimestamp(int enable) { _show_timestamp = enable; }
 
 /* Change color for a specific log level */
-static inline void SetLogColor(int level, const char* color_code) {
+static inline void SetLogColor(int level, const char* color_code)
+{
 #ifndef _WIN32
-    if (level >= LOG_LEVEL_DEBUG && level <= LOG_LEVEL_FATAL) {
-        _log_colors[level] = color_code;
-    }
+	if (level >= LOG_LEVEL_DEBUG && level <= LOG_LEVEL_FATAL)
+	{
+		_log_colors[level] = color_code;
+	}
 #endif
 }
 
 /* Convert log level to string */
-static inline const char* _log_level_to_string(int level) {
-    switch (level) {
-        case LOG_LEVEL_DEBUG: return "DEBUG";
-        case LOG_LEVEL_INFO:  return "INFO";
-        case LOG_LEVEL_WARN:  return "WARN";
-        case LOG_LEVEL_ERROR: return "ERROR";
-        case LOG_LEVEL_FATAL: return "FATAL";
-        default:              return "UNKNOWN";
-    }
+static inline const char* _log_level_to_string(int level)
+{
+	switch (level)
+	{
+		case LOG_LEVEL_DEBUG: return "DEBUG";
+		case LOG_LEVEL_INFO:  return "INFO";
+		case LOG_LEVEL_WARN:  return "WARN";
+		case LOG_LEVEL_ERROR: return "ERROR";
+		case LOG_LEVEL_FATAL: return "FATAL";
+		default:              return "UNKNOWN";
+	}
 }
 
 /* Get current time string */
-static inline void _current_time_string(char* buffer, size_t size) {
-    time_t now = time(NULL);
-    struct tm tinfo;
-    _LOCALTIME(now, tinfo);
-    strftime(buffer, size, LOG_TIME_FORMAT, &tinfo);
+static inline void _current_time_string(char* buffer, size_t size)
+{
+	time_t now = time(NULL);
+	struct tm tinfo;
+	_LOCALTIME(now, tinfo);
+	strftime(buffer, size, LOG_TIME_FORMAT, &tinfo);
 }
 
 /* Open the log file */
-static inline void _open_log_file() {
-    if (_log_output_stream) fclose(_log_output_stream);
-    _log_output_stream = fopen(_log_file_path, _log_file_mode);
+static inline void _open_log_file()
+{
+	if (_log_output_stream) fclose(_log_output_stream);
+	_log_output_stream = fopen(_log_file_path, _log_file_mode);
 }
 
 /* Set log mode */
-static inline void _set_log_mode(LogMode mode) {
-    _log_mode = mode;
-    if (_log_mode == LOG_MODE_FILE) {
-        _open_log_file();
-    }
+static inline void _set_log_mode(LogMode mode)
+{
+	_log_mode = mode;
+	if (_log_mode == LOG_MODE_FILE) {
+		_open_log_file();
+	}
 }
 
 /* Set log level */
 static inline void _set_log_level(int level) { _log_level = level; }
 
 /* Set log file path */
-static inline void _set_log_file_path(const char* filepath) {
-    strncpy(_log_file_path, filepath, sizeof(_log_file_path) - 1);
-    _log_file_path[sizeof(_log_file_path) - 1] = '\0';
-    if (_log_mode == LOG_MODE_FILE) _open_log_file();
+static inline void _set_log_file_path(const char* filepath)
+{
+	strncpy(_log_file_path, filepath, sizeof(_log_file_path) - 1);
+	_log_file_path[sizeof(_log_file_path) - 1] = '\0';
+	if (_log_mode == LOG_MODE_FILE) _open_log_file();
 }
 
 /* Clear log file */
-static inline void _clear_log_file() {
-    if (_log_mode == LOG_MODE_FILE && _log_output_stream) {
-        freopen(_log_file_path, "w", _log_output_stream);
-    }
+static inline void _clear_log_file()
+{
+	if (_log_mode == LOG_MODE_FILE && _log_output_stream)
+	{
+		freopen(_log_file_path, "w", _log_output_stream);
+	}
 }
 
 /* Erase log file */
-static inline void _erase_log_file() {
-    if (_log_mode == LOG_MODE_FILE) {
-        fclose(_log_output_stream);
-        remove(_log_file_path);
-        _open_log_file();
-    }
+static inline void _erase_log_file()
+{
+	if (_log_mode == LOG_MODE_FILE)
+	{
+		fclose(_log_output_stream);
+		remove(_log_file_path);
+		_open_log_file();
+	}
 }
 
 /* Log a message */
 static inline void _log_message(int level, const char* file, int line, const char* format, ...) {
-    if (level >= _log_level) {
-        char log_message[MAX_LOG_MESSAGE_LENGTH];
-        char time_buffer[64] = "";
+	if (level >= _log_level) {
+		char log_message[MAX_LOG_MESSAGE_LENGTH];
+		char time_buffer[64] = "";
 
-        if (_show_timestamp) {
-            _current_time_string(time_buffer, sizeof(time_buffer));
-        }
+		if (_show_timestamp) {
+			_current_time_string(time_buffer, sizeof(time_buffer));
+		}
 
-        va_list args;
-        va_start(args, format);
-        vsnprintf(log_message, sizeof(log_message), format, args);
-        va_end(args);
+		va_list args;
+		va_start(args, format);
+		vsnprintf(log_message, sizeof(log_message), format, args);
+		va_end(args);
 
-        FILE* output_stream = (_log_mode == LOG_MODE_FILE) ? _log_output_stream :
-                              (_log_mode == LOG_MODE_STDERR) ? stderr : stdout;
+		FILE* output_stream = (_log_mode == LOG_MODE_FILE) ? _log_output_stream :
+			(_log_mode == LOG_MODE_STDERR) ? stderr : stdout;
 
-        if (_use_colors && _log_mode != LOG_MODE_FILE) {
+		if (_use_colors && _log_mode != LOG_MODE_FILE) {
 #ifndef _WIN32
-            fprintf(output_stream, "%s", _log_colors[level]);
+			fprintf(output_stream, "%s", _log_colors[level]);
 #endif
-        }
+		}
 
-        if (_show_timestamp) fprintf(output_stream, "[%s] ", time_buffer);
-        if (_show_file_line) fprintf(output_stream, "%s:%d ", file, line);
-        if (_show_log_level) fprintf(output_stream, "[%s] ", _log_level_to_string(level));
+		if (_show_timestamp) fprintf(output_stream, "[%s] ", time_buffer);
+		if (_show_file_line) fprintf(output_stream, "%s:%d ", file, line);
+		if (_show_log_level) fprintf(output_stream, "[%s] ", _log_level_to_string(level));
 
-        fprintf(output_stream, "%s\n", log_message);
-        fflush(output_stream);
+		fprintf(output_stream, "%s\n", log_message);
+		fflush(output_stream);
 
-        if (_use_colors && _log_mode != LOG_MODE_FILE) {
+		if (_use_colors && _log_mode != LOG_MODE_FILE) {
 #ifndef _WIN32
-            fprintf(output_stream, "%s", COLOR_RESET);
+			fprintf(output_stream, "%s", COLOR_RESET);
 #endif
-        }
-    }
+		}
+	}
 }
 
 /* Logging macros */
-#define LOG_DEBUG(...) _log_message(LOG_LEVEL_DEBUG, __FILE__, __LINE__, __VA_ARGS__)
-#define LOG_INFO(...)  _log_message(LOG_LEVEL_INFO, __FILE__, __LINE__, __VA_ARGS__)
-#define LOG_WARN(...)  _log_message(LOG_LEVEL_WARN, __FILE__, __LINE__, __VA_ARGS__)
-#define LOG_ERROR(...) _log_message(LOG_LEVEL_ERROR, __FILE__, __LINE__, __VA_ARGS__)
-#define LOG_FATAL(...) _log_message(LOG_LEVEL_FATAL, __FILE__, __LINE__, __VA_ARGS__)
+#define LOG_DEBUG(...)	_log_message(LOG_LEVEL_DEBUG, __FILE__, __LINE__, __VA_ARGS__)
+#define LOG_INFO(...) 	_log_message(LOG_LEVEL_INFO, __FILE__, __LINE__, __VA_ARGS__)
+#define LOG_WARN(...) 	_log_message(LOG_LEVEL_WARN, __FILE__, __LINE__, __VA_ARGS__)
+#define LOG_ERROR(...)	_log_message(LOG_LEVEL_ERROR, __FILE__, __LINE__, __VA_ARGS__)
+#define LOG_FATAL(...)	_log_message(LOG_LEVEL_FATAL, __FILE__, __LINE__, __VA_ARGS__)
 
 /* Fully restored macros */
 #define SET_LOG_LEVEL(level) _set_log_level(level)
@@ -506,7 +533,8 @@ int ExecuteRule(const char *rule)
 }
 
 
-int ExecuteCommandGeneric(const Command *command, int runInThread) {
+int ExecuteCommandGeneric(const Command *command, int runInThread)
+{
 	if (!command || !command->c_str) {
 		LOG_ERROR("Invalid command: NULL pointer");
 		return 0;
@@ -579,6 +607,9 @@ int ExecuteCommandGeneric(const Command *command, int runInThread) {
 #define ExecuteCommand(command) ExecuteCommandGeneric(command, 0)
 #define ExecuteCommandWithThreading(command) ExecuteCommandGeneric(command, 1)
 
+
+//	FIXME: Treads only works on posix for now
+#if defined(PLATFORM_UNIX)
 void ExecuteCommands(int runInThread, ...)
 {
 	va_list args;
@@ -595,7 +626,8 @@ void ExecuteCommands(int runInThread, ...)
 		if (runInThread)
 		{
 			pthread_create(&threads[threadCount], NULL, (void *(*)(void *))ExecuteCommandGeneric, (void *)cmd);
-			threadCount++; }
+			threadCount++;
+		}
 		else
 		ExecuteCommand(cmd);
 	}
@@ -610,6 +642,87 @@ void ExecuteCommands(int runInThread, ...)
 	va_end(args);
 }
 #define ExecuteCommands(...) ExecuteCommands(__VA_ARGS__, NULL)
+#endif
+
+
+// FIXME: ===================	Problematic	====================
+char *GetCommandOutput(const char *cmd)
+{
+#ifdef PLATFORM_WINDOWS
+	FILE *pipe = _popen(cmd, "r");
+#else
+	FILE *pipe = popen(cmd, "r");
+#endif
+
+	if (!pipe) return NULL;
+
+	char buffer[512];
+	char *result = NULL;
+
+	if (fgets(buffer, sizeof(buffer), pipe))
+	{
+		size_t len = strlen(buffer);
+		if (len > 0 && buffer[len - 1] == '\n')
+			buffer[len - 1] = '\0';  // Remove newline
+
+		result = _STRDUP(buffer);  // strdup or _strdup
+	}
+
+#ifdef PLATFORM_WINDOWS
+	_pclose(pipe);
+#else
+	pclose(pipe);
+#endif
+
+	return result; // Must be freed by caller
+}
+
+
+
+
+char *GetCompiler(const char *compilerName)
+{
+	if (!compilerName || !*compilerName) return NULL;
+
+	char command[256];
+
+#ifdef PLATFORM_WINDOWS
+	snprintf(command, sizeof(command), "where %s 2>nul", compilerName); // redirect stderr
+#else
+	snprintf(command, sizeof(command), "which %s 2>/dev/null", compilerName);
+#endif
+
+#ifdef PLATFORM_WINDOWS
+	FILE *pipe = _popen(command, "r");
+#else
+	FILE *pipe = popen(command, "r");
+#endif
+
+	if (!pipe) return NULL;
+
+	char buffer[512] = {0};
+	char *path = NULL;
+
+	if (fgets(buffer, sizeof(buffer), pipe))
+	{
+		size_t len = strlen(buffer);
+		while (len > 0 && (buffer[len - 1] == '\n' || buffer[len - 1] == '\r')) {
+			buffer[--len] = '\0'; // strip newline(s)
+		}
+
+		path = _STRDUP(buffer); // _strdup on Windows, strdup on Unix
+	}
+
+#ifdef PLATFORM_WINDOWS
+	_pclose(pipe);
+#else
+	pclose(pipe);
+#endif
+
+	return path; // caller must free
+}
+// FIXME: ========================================================================================================
+
 
 time_t GetFileLastEditTime(const char *filePath)
 {
@@ -689,71 +802,76 @@ void ManageRules(int argc, char **argv)
 
 /* ----------------------------------------- SCRIPT UTILS ----------------------------------------- */
 
-int FileExists(const char *path)
+
+int CB_FileExists(const char *path)
 {
 	struct stat buffer;
 	return (stat(path, &buffer) == 0);
 }
 
-int CreateFile(const char *path, const char *content)
+int CB_CreateFile(const char *path, const char *content)
 {
-	FILE *file = fopen(path, "w");
+	FILE *file	= fopen(path, "w");
 	if (!file) return 0;
 
-	if (content && *content) {
+	if (content && *content)
 		fprintf(file, "%s", content);
-	}
 
 	fclose(file);
 	return 1;
 }
 
-int CreateFileWithMode(const char *path, const char *content, const char *mode)
+int CB_CreateFileWithMode(const char *path, const char *content, const char *mode)
 {
-	FILE *file = fopen(path, mode ? mode : "w");
+	FILE *file	= fopen(path, mode ? mode : "w");
 	if (!file) return 0;
 
-	if (content && *content) {
+	if (content && *content)
 		fprintf(file, "%s", content);
-	}
 
 	fclose(file);
 	return 1;
 }
 
-int CopyFile(const char *src, const char *dest)
+int CB_CopyFile(const char *src, const char *dest)
 {
-	FILE *srcFile = fopen(src, "rb");
+	FILE *srcFile	= fopen(src, "rb");
 	if (!srcFile) return 0;
 
-	FILE *destFile = fopen(dest, "wb");
-	if (!destFile) {
+	FILE *destFile	= fopen(dest, "wb");
+	if (!destFile)
+	{
 		fclose(srcFile);
 		return 0;
 	}
 
 	char buffer[4096];
 	size_t bytes;
-	while ((bytes = fread(buffer, 1, sizeof(buffer), srcFile)) > 0) {
+	while ((bytes = fread(buffer, 1, sizeof(buffer), srcFile)) > 0)
 		fwrite(buffer, 1, bytes, destFile);
-	}
 
 	fclose(srcFile);
 	fclose(destFile);
 	return 1;
 }
 
-int RemoveFile(const char *path)
+int CB_RemoveFile(const char *path)
 {
 	return remove(path) == 0;
 }
 
-int CreateDirectory(const char *path)
+
+int CB_CreateDirectory(const char *path)
 {
-	return mkdir(path, 0777) == 0 || errno == EEXIST;
+#ifdef PLATFORM_WINDOWS
+    return _mkdir(path) == 0 || errno == EEXIST;
+#else
+    return mkdir(path, 0777) == 0 || errno == EEXIST;
+#endif
 }
 
-int RemoveDirectory(const char *path)
+
+int CB_RemoveDirectory(const char *path)
 {
 #ifdef PLATFORM_WINDOWS
 	return _rmdir(path) == 0;
@@ -762,20 +880,32 @@ int RemoveDirectory(const char *path)
 #endif
 }
 
-int DirectoryExists(const char *path) {
+
+int CB_DirectoryExists(const char *path) {
 	struct stat buffer;
-	return (stat(path, &buffer) == 0 && S_ISDIR(buffer.st_mode));
+	if (stat(path, &buffer) != 0)
+		return 0;
+
+	#ifdef _WIN32
+		return (buffer.st_mode & _S_IFDIR) != 0;
+	#else
+		return S_ISDIR(buffer.st_mode);
+	#endif
 }
 
 
 
-
-
-
-
-
-
-
+#define NO_PREFIX
+#if defined(NO_PREFIX) && defined(PLATFORM_UNIX)
+	#define	CreateFile			CB_CreateFile
+	#define	CreateFileWithMode	CB_CreateFileWithMode
+	#define	CopyFile			CB_CopyFile
+	#define	FileExists			CB_FileExists
+	#define	RemoveFile			CB_RemoveFile
+	#define	DirectoryExists		CB_DirectoryExists
+	#define CreateDirectory		CB_CreateDirectory
+	#define	RemoveDirectory		CB_RemoveDirectory
+#endif
 
 
 
@@ -810,7 +940,7 @@ int DirectoryExists(const char *path) {
 	#define	EXECDIR		"./"
 	#define EXECNAME	"WECA"
 	#define	EXEC		EXECDIR EXECNAME
-	#define CC			"cc"
+	#define CC			DEFAULT_COMPILER
 	#define CFLAGS		"-Wall -Wextra"
 
 	#define RAYLIB_DIR				"src/extern/raylib-5.5/src/"
@@ -834,7 +964,7 @@ int DirectoryExists(const char *path) {
 	#define LDFLAGS		"-I"RAYLIB_DIR" "MACOS_FRAMEWORKS
 #elif defined(PLATFORM_LINUX)
 	#define EXECNAME	"WECA"
-	#define CC			"cc"
+	#define CC			DEFAULT_COMPILER
 	#define CFLAGS		"-Wall -Wextra"
 
 	#define RAYLIB_DIR				"src/extern/raylib-5.5/src/"
@@ -845,8 +975,18 @@ int DirectoryExists(const char *path) {
 	#define LDFLAGS		"-I"RAYLIB_DIR
 
 #elif defined(PLATFORM_WINDOWS)
-	#define EXECNAME	"TiletimeMaker"
-	#define CC			"msvc"
+	#define	EXECDIR		"./"
+	#define EXECNAME	"WECA"
+	#define	EXEC		EXECDIR EXECNAME
+	#define CC			DEFAULT_COMPILER
+	#define CFLAGS		""
+
+	#define RAYLIB_DIR				"src/extern/raylib-5.5/src/"
+	#define	RAYLIB_BIN_NAME			"libraylib.dll"
+	#define RAYLIB_BIN_PATH			RAYLIB_DIR RAYLIB_BIN_NAME
+	#define RAYLIB_BUILD_COMMAND	"cd "RAYLIB_DIR" && make PLATFORM=PLATFORM_DESKTOP"
+
+	#define LDFLAGS		"-I"RAYLIB_DIR
 #endif
 
 
@@ -863,7 +1003,7 @@ void BuildRaylib(void)
 
 void BuildRule(void)
 {
-	if (!FileExists(RAYLIB_BIN_PATH))
+	if (!CB_FileExists(RAYLIB_BIN_PATH))
 	{
 		LOG_INFO(COLOR_YELLOW""RAYLIB_BIN_NAME" not found"COLOR_RESET);
 		BuildRaylib();
